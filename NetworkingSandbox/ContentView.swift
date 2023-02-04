@@ -37,6 +37,34 @@ struct ContentView: View {
                     }
                 }
             }
+            
+            Section("Messages") {
+                ForEach(messages) { message in
+                    VStack(alignment: .leading) {
+                        Text(message.from)
+                            .font(.headline)
+                        
+                        Text(message.text)
+                    }
+                }
+            }
+        }
+        .task {
+            do {
+                //  1 get the url
+                let headlinesURL = URL(string: "https://hws.dev/headlines.json")!
+                let messagesURL = URL(string: "https://hws.dev/messages.json")!
+                //  2 get the data from url
+                let (headlineData, _) = try await URLSession.shared.data(from: headlinesURL)
+                let (messageData, _) = try await URLSession.shared.data(from: messagesURL)
+                //  3 decode the data
+                
+                headlines = try JSONDecoder().decode([News].self, from: headlineData)
+                messages = try JSONDecoder().decode([Message].self, from: messageData)
+                //  4 catch all those important errors
+            } catch {
+                print("Error handling is a smart move!")
+            }
         }
     }
 }
