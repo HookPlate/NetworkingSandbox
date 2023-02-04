@@ -50,11 +50,12 @@ struct ContentView: View {
             }
         }
         .task {
+            //he purposefully made this handle two completely different kinds of data. They're not related to each other but you'll see why in a moment.
             do {
                 //  1 get the url
                 let headlinesURL = URL(string: "https://hws.dev/headlines.json")!
                 let messagesURL = URL(string: "https://hws.dev/messages.json")!
-                //  2 get the data from url
+                //  2 get the data from url (this is done asynchonously)
                 let (headlineData, _) = try await URLSession.shared.data(from: headlinesURL)
                 let (messageData, _) = try await URLSession.shared.data(from: messagesURL)
                 //  3 decode the data
