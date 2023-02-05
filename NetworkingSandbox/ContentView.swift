@@ -20,6 +20,8 @@ struct Message: Decodable, Identifiable {
     var text: String
 }
 
+
+
 struct ContentView: View {
     @State private var headlines = [News]()
     @State private var messages = [Message]()
@@ -55,7 +57,7 @@ struct ContentView: View {
                 //  1 get the url
                 let headlinesURL = URL(string: "https://hws.dev/headlines.json")!
                 let messagesURL = URL(string: "https://hws.dev/messages.json")!
-                //  2 get the data from url (this is done asynchonously)
+                //  2 get the data from url (this is done asynchonously) try is used for sessions that throw errors, awsit is used for anything that is asynchronous. That underscore is the response. They are assigned to variables. great video from wwdc21 here https://developer.apple.com/videos/play/wwdc2021/10132/
                 let (headlineData, _) = try await URLSession.shared.data(from: headlinesURL)
                 let (messageData, _) = try await URLSession.shared.data(from: messagesURL)
                 //  3 decode the data
