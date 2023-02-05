@@ -20,18 +20,27 @@ struct Message: Decodable, Identifiable {
     var text: String
 }
 
-struct EndPoint {
+struct EndPoint<T: Decodable> {
     var url: URL
-    //gets the strings out of our code where they can be misstyped
-    static let headlines = EndPoint(url: URL(string: "https://hws.dev/headlines.json")!)
-    static let messages = EndPoint(url: URL(string: "https://hws.dev/messages.json")!)
+    var type: T.Type
 }
-
+//if that's the version of Endpoint we're talking about, give it the correlating static property. type is the type it'll decode.
+extension EndPoint where T == [News] {
+    static let headlines = EndPoint(url: URL(string: "https://hws.dev/headlines.json")!, type: [News].self)
+}
+//same as above
+extension EndPoint where T == [Message] {
+    static let messages = EndPoint(url: URL(string: "https://hws.dev/messages.json")!, type: [Message].self)
+}
+//Because we made tha bove generic this needs that generic thing passing through too
 struct NetworkManager {
-    func fetch(_ resource: EndPoint) async throws -> Data {
+    func fetch<T>(_ resource: EndPoint<T>) async throws -> T {
         var request = URLRequest(url: resource.url)
         var (data, _) = try await URLSession.shared.data(for: request)
-        return data
+        //at this point instead of sending the data back directly we'll decode it here.
+        //now it handles decoding for use baked right in.
+        let decoder = JSONDecoder()
+        return try decoder.decode(T.self, from: data)
     }
 }
 
@@ -66,12 +75,10 @@ struct ContentView: View {
             }
         }
         .task {
-            do {
-                let headlineData = try await networkManager.fetch(.headlines)
-                let messageData = try await networkManager.fetch(.messages)
-                
-                headlines = try JSONDecoder().decode([News].self, from: headlineData)
-                messages = try JSONDecoder().decode([Message].self, from: messageData)
+            //and again this code becomes even simpler
+            do { 
+                headlines = try await networkManager.fetch(.headlines)
+                messages = try await networkManager.fetch(.messages)
             } catch {
                 print("Error handling is a smart move!")
             }
