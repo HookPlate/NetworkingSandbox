@@ -19,11 +19,30 @@ struct Message: Decodable, Identifiable {
     var from: String
     var text: String
 }
+//these two trivial (his words) structs makes our network code much simpler.
+struct EndPoint {
+    var url: URL
+    //gets the strings out of our code where they can be misstyped
+    static let headlines = EndPoint(url: URL(string: "https://hws.dev/headlines.json")!)
+    static let messages = EndPoint(url: URL(string: "https://hws.dev/messages.json")!)
+}
+
+struct NetworkManager {
+    //we don't want to get rid of async here, it's handled somewhere else
+    //nor do we ant to comsume errors (hence the throws) they're handled by the call site
+    func fetch(_ resource: EndPoint) async throws -> Data {
+        var request = URLRequest(url: resource.url)
+        //we're using data(for not data(from because we're using URLRequest
+        var (data, _) = try await URLSession.shared.data(for: request)
+        return data
+    }
+}
 
 struct ContentView: View {
     @State private var headlines = [News]()
     @State private var messages = [Message]()
     
+    let networkManager = NetworkManager()
     
     var body: some View {
         List {
@@ -50,14 +69,10 @@ struct ContentView: View {
             }
         }
         .task {
+            //now this becomes a lot simpler
             do {
-                //  1 get the url
-                let headlinesURL = URL(string: "https://hws.dev/headlines.json")!
-                let messagesURL = URL(string: "https://hws.dev/messages.json")!
-                //  2 get the data from url (this is done asynchonously)
-                let (headlineData, _) = try await URLSession.shared.data(from: headlinesURL)
-                let (messageData, _) = try await URLSession.shared.data(from: messagesURL)
-                //  3 decode the data
+                let headlineData = try await networkManager.fetch(.headlines)
+                let messageData = try await networkManager.fetch(.messages)
                 
                 headlines = try JSONDecoder().decode([News].self, from: headlineData)
                 messages = try JSONDecoder().decode([Message].self, from: messageData)
