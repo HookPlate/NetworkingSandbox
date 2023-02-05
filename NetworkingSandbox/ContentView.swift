@@ -19,7 +19,7 @@ struct Message: Decodable, Identifiable {
     var from: String
     var text: String
 }
-//these two trivial (his words) structs makes our network code much simpler.
+
 struct EndPoint {
     var url: URL
     //gets the strings out of our code where they can be misstyped
@@ -28,11 +28,8 @@ struct EndPoint {
 }
 
 struct NetworkManager {
-    //we don't want to get rid of async here, it's handled somewhere else
-    //nor do we ant to comsume errors (hence the throws) they're handled by the call site
     func fetch(_ resource: EndPoint) async throws -> Data {
         var request = URLRequest(url: resource.url)
-        //we're using data(for not data(from because we're using URLRequest
         var (data, _) = try await URLSession.shared.data(for: request)
         return data
     }
@@ -69,14 +66,12 @@ struct ContentView: View {
             }
         }
         .task {
-            //now this becomes a lot simpler
             do {
                 let headlineData = try await networkManager.fetch(.headlines)
                 let messageData = try await networkManager.fetch(.messages)
                 
                 headlines = try JSONDecoder().decode([News].self, from: headlineData)
                 messages = try JSONDecoder().decode([Message].self, from: messageData)
-                //  4 catch all those important errors
             } catch {
                 print("Error handling is a smart move!")
             }
