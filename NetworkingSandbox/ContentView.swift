@@ -101,13 +101,11 @@ struct NetworkManager {
 }
 
 struct NetworkManagerKey: EnvironmentKey {
-    //Note this is the key - play it safe by having testing as a default.
     static var defaultValue = NetworkManager(environment: .testing)
     
 }
-//so we can read and write the key
+
 extension EnvironmentValues {
-    //I think we use this when we indsert it into the main apps environment.
     var networkManager: NetworkManager {
         get { self[NetworkManagerKey.self] }
         set { self[NetworkManagerKey.self] = newValue }
@@ -117,9 +115,7 @@ extension EnvironmentValues {
 struct ContentView: View {
     @State private var headlines = [News]()
     @State private var messages = [Message]()
-    //this is all very clever but currently every every newtwork enabled view needs to make its own NetworkManager and decide its own environment - silly.
-    //let networkManager = NetworkManager(environment: .production)
-    //last step is to read it out from the environment here. We don't want to have to worry here if we're in testing or production, we don;t care, this view shouldn't have to care, we're getting rid of all the possible places we can screw this up.
+
     @Environment(\.networkManager) var networkManager
     
     var body: some View {
