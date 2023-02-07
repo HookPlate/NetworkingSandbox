@@ -29,7 +29,7 @@ struct EndPoint<T: Decodable> {
 }
 
 extension EndPoint where T == [News] {
-    static let headlines = EndPoint(path: "headlines.json", type: [News].self)
+    static let headlines = EndPoint(path: "headlinesT.json", type: [News].self)
 }
 
 extension EndPoint where T == [Message] {
@@ -98,6 +98,27 @@ struct NetworkManager {
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
     }
+    
+    //another fetch to handle retrying. attempts: you must tell me how many attempts to make anf a 2 second delay between each fetch. Much of it is the same as the orginal fetch() because we can call down to that? Known as an overload (another more complex option on fetch?
+    func fetch<T>(_ resource: EndPoint<T>, with data: Data? = nil, attempts: Int, retryDelay:Double = 1) async throws -> T {
+        //We have to have this becasue we're making attempts now. Try once - it failes, try again - it failed, try again - response.
+        do {
+            print("Attempting to fetch (Attempts remaining: \(attempts)")
+            //this is the original fetch method. That, if it goes wrong will fail on line 96, or if the decode fails it'll go wrong on line 99, either way it'll throw an error (look at the function signature) and jump straight to the below catch.
+            return try await fetch(resource, with: data)
+            //we've tried our original fetch request and it went wrong, what do you wwant to do.
+        } catch {
+            if attempts > 1 {
+                //Sleep for some amount of time, I think this gets faster and faster as retryDelay gets smaller - no becasue retryDelay never changes from 1. These new duration things in 14.2 are Integers and .seconds is a double (which you'd normally use) therefore he converts the retryDelay: Double into an Int using milliseinds.
+                try await Task.sleep(for: .milliseconds(Int(retryDelay * 1000)))
+                //so what's happening here is the first time we try to fetch we do it on line 108, that's one fetch calling a differrent overload of fetch(), if that fails we wait a certain amount of time and then call ourselves recursively with attempts minus 1.
+                return try await fetch(resource, with: data, attempts: attempts - 1, retryDelay: retryDelay)
+            } else {
+                //we tried, we've gone through all our attempts recursively calling ourself, they all failed - we'll send back whetever error we receive. So if the call on 108 (because each time we're trying that block don't forget when we call ourselves) throws an error we'll send it back, bubble it upwards.
+                throw error
+            }
+        }
+    }
 }
 
 struct NetworkManagerKey: EnvironmentKey {
@@ -144,7 +165,8 @@ struct ContentView: View {
         }
         .task {
             do {
-                headlines = try await networkManager.fetch(.headlines)
+                //we change the below so we can test our retry support. We did this having put a spelling mistake on line 32. It prints out to the console Attempting to fetch (Attempts remaining: 5 all the way down to 1 each every second then prints catch block below.
+                headlines = try await networkManager.fetch(.headlines, attempts: 5)
                 messages = try await networkManager.fetch(.messages)
                 
             } catch {
