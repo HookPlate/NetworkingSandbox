@@ -112,6 +112,15 @@ struct NetworkManager {
             }
         }
     }
+    //another little overload to our fetch funtion, it'll still, like the above, call down to the main more complicated fetch function that decodes etc but accepts a default value for times you actually have failed and want to show something meaningful.
+    func fetch<T>(_ resource: EndPoint<T>, with data: Data? = nil, defaultValue: T) async throws -> T {
+        do {
+            return try await fetch(resource, with: data)
+            //then if it all goes wrong do this
+        } catch {
+            return defaultValue
+        }
+    }
 }
 
 struct NetworkManagerKey: EnvironmentKey {
@@ -158,7 +167,8 @@ struct ContentView: View {
         }
         .task {
             do {
-                headlines = try await networkManager.fetch(.headlines, attempts: 5)
+                //you'd then change the call site here to have some default value. We now have 3 versions of this data. 
+                headlines = try await networkManager.fetch(.headlines, defaultValue: [News])
                 messages = try await networkManager.fetch(.messages)
                 
             } catch {
