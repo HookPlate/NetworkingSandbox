@@ -25,6 +25,7 @@ struct EndPoint<T: Decodable> {
     var type: T.Type
     var method = HTTPMethod.get
     var headers = [String: String]()
+    var keyPath: String?
     
 }
 
@@ -34,6 +35,12 @@ extension EndPoint where T == [News] {
 
 extension EndPoint where T == [Message] {
     static let messages = EndPoint(path: "messages.json", type: [Message].self)
+}
+//the String is the type of the thing we want to read
+extension EndPoint where T == String {
+    //don't forget this 'nested.json' will get attached to the correct suffix in the fetch method.
+    //the keypath has to be a . seperated list of the things you wnat to dig through to find your thing. So I want to read just that last thing 'city' fromthat whole JSON thing and it'll be a String.
+    static let city = EndPoint(path: "nested.json", type: String.self, keyPath: "response.user.address.city")
 }
 
 enum HTTPMethod: String {
@@ -95,6 +102,20 @@ struct NetworkManager {
         request.allHTTPHeaderFields = resource.headers
         var (data, _) = try await environment.session.data(for: request)
 
+        //if we have a keypath this person wants us to dig
+        if let keyPath = resource.keyPath {
+            if let rootObject = try JSONSerialization.jsonObject(with: data) as?
+                // if we have managed to decode the object into an NSDictionary, if that's work we now have a top level dictionary for all the Nested JSON. So keys and values for all of it.
+                NSDictionary {
+                if let nestedObject = rootObject.value(forKeyPath: keyPath) {
+                    //if we've dug through our dictionary using that keyPath now we're here. SWe've got the keyPath, we've made it into a dictionary, we've fund the keypath inside the dictionary, we then put it back into Data
+                    data = try JSONSerialization.data(withJSONObject: nestedObject, options: .fragmentsAllowed)
+                    //that last parameter says, let me encode just a string rather than a whole dictionary.
+                    //now it's back as data, important becaause the decoding below still has to happen. Yes this is just a String but it could be something much larger and more complex so having it as data here and decoding it (below) is ideal.
+                }
+            }
+        }
+        
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
     }
@@ -167,10 +188,12 @@ struct ContentView: View {
         }
         .task {
             do {
-                //you'd then change the call site here to have some default value. We now have 3 versions of this data. 
-                headlines = try await networkManager.fetch(.headlines, defaultValue: [News])
+                headlines = try await networkManager.fetch(.headlines)
                 messages = try await networkManager.fetch(.messages)
                 
+                //a little test to see if we can get that nested JSON slice. Again we can do .city thaks to the static let on the extension of Endpoint.
+                let city = try await networkManager.fetch(.city)
+                print(city)
             } catch {
                 print("Error handling is a smart move!")
             }
